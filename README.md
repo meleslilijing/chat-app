@@ -1,3 +1,25 @@
+如何启动项目？
+docker-compose up --build
+
+测试账号
+http://localhost:3000/api/auth/login?email=hello%2540gmail.com&password=123
+预期返回
+{
+  "code": 1,
+  "message": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODFjODZmMjA0MGEyZDQzNzhlOGJkY2QiLCJlbWFpbCI6ImhlbGxvQGdtYWlsLmNvbSIsImlhdCI6MTc0NjcxNDA5OSwiZXhwIjoxNzQ3MzE4ODk5fQ.YkKbhmtJqNXdx5-J-rymDE1kj4qCOte-xx_jy21YpSU",
+  "user": {
+    "_id": "681c86f2040a2d4378e8bdcd",
+    "username": "hellohello",
+    "email": "hello@gmail.com"
+  }
+}
+
+TODO: 
+改为https
+登录的pwd在发送get请求前 需要进行加密
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
