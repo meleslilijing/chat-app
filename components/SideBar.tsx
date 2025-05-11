@@ -23,6 +23,8 @@ interface IUser {
 export default function SideBar({
   users,
   dispatch,
+  onlineSet,
+  currentUser
 }: {
   state: any;
   dispatch: any;
@@ -30,8 +32,25 @@ export default function SideBar({
   const [searhText, setSearchText] = useState("");
 
   const showUsers = useMemo(() => {
-    return users.filter((user: IUser) => user.username.includes(searhText));
-  }, [searhText, users]);
+    const filteredUsers = users
+      .filter((user: IUser) => user.id !== currentUser.id && user.username.includes(searhText))
+      .sort((a: IUser, b: IUser) => {
+        return a.username.localeCompare(b.username)
+      });
+
+    const onlineUsers: IUser[] = []
+    const offlineUsers: IUser[] = []
+
+    filteredUsers.forEach((user: IUser) => {
+      if (onlineSet.has(user.id)) {
+        onlineUsers.push(user)
+      } else {
+        offlineUsers.push(user)
+      }
+    })
+
+    return [...onlineUsers, ...offlineUsers];
+  }, [searhText, users, onlineSet]);
 
   const onSearchTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchText((e.target as HTMLInputElement).value);
@@ -62,7 +81,7 @@ export default function SideBar({
                       {/* <AvatarImage src="https://github.com/shadcn.png" /> */}
                       <AvatarFallback>{username.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div>{username}</div>
+                    <div>{ username} { onlineSet.has(id) ? "" : "(offline)" }</div>
                   </div>
                   <Separator className="my-2" />
                 </>

@@ -1,8 +1,8 @@
 // pages/api/auth/login.ts
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import dbConnect from "../../../lib/dbConnect";
-import User from "../../../models/User";
+import dbConnect from "../../../../lib/dbConnect";
+import User from "../../../../models/User";
 //@ts-ignore
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
@@ -20,10 +20,9 @@ export default async function handler(
   let { email, password } = req.query;
   email = decodeURIComponent(email as string || '')
 
-console.log(`email: ${email}, password: ${password}`)
   if (typeof email !== "string" || typeof password !== "string") {
     return res
-      .status(400)
+      .status(200)
       .json({ code: -1, message: "缺少或格式错误的用户名/密码" });
   }
 
@@ -31,12 +30,12 @@ console.log(`email: ${email}, password: ${password}`)
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ code: -1, message: "用户不存在" });
+      return res.status(200).json({ code: -1, message: "用户不存在" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ code: -1, message: "密码错误" });
+      return res.status(200).json({ code: -1, message: "密码错误" });
     }
 
     const token = jwt.sign(
@@ -45,18 +44,19 @@ console.log(`email: ${email}, password: ${password}`)
       { expiresIn: "7d" }
     );
 
+    res.setHeader('Authorization', `Bearer ${token}`);
+
     return res.status(200).json({
       code: 1,
       message: "success",
       data: {
         token,
         user: { 
-          _id: user._id, 
+          id: user._id, 
           username: user.username, 
           email: user.email 
         },
       }
-      
     });
   } catch (err) {
     console.error("登录失败:", err);

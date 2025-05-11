@@ -1,4 +1,4 @@
-// 加载历史消息
+// pages/api/message/load.ts
 
 import dbConnect from '../../../lib/dbConnect';
 import Message from '../../../models/Message';
@@ -7,40 +7,60 @@ import jwt from 'jsonwebtoken';
 export default async function handler(req, res) {
   await dbConnect();
 
-  if (req.method !== 'GET') return res.status(405).end();
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: '只支持 GET 请求' });
+  }
 
-  const { conversationId, type, limit = 20, before } = req.query;
-  const token = req.headers.authorization?.split(' ')[1];
+  const { 
+    type, 
+    conversationId, 
+    token
+    // limit = '50'
+  } = req.query;
+  // const token = req.headers.Authorization?.split(' ')[1];
+  
+  console.log('Token: ', token)
 
-  if (!token) return res.status(401).json({ error: '缺少 token' });
+  if (!token) {
+    return res.status(401).json({ error: '未提供 token' });
+  }
 
   let userId;
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     userId = decoded.userId;
-  } catch (e) {
-    return res.status(401).json({ error: '无效 token' });
+  } catch (err) {
+    return res.status(401).json({ error: '无效的 token' });
   }
 
-  const query = {};
-  if (type === 'private') {
-    query.$or = [
-      { sender: userId, receiver: conversationId },
-      { sender: conversationId, receiver: userId }
-    ];
-  } else if (type === 'group') {
-    query.group = conversationId;
-  } else {
-    return res.status(400).json({ error: 'type 必须是 private 或 group' });
+  if (!type || !conversationId || (type !== 'private' && type !== 'group')) {
+    return res.status(400).json({ error: '请求参数错误' });
   }
 
-  if (before) {
-    query.createdAt = { $lt: new Date(before) };
+  try {
+    const messages = await Message.find({
+      type,
+      ...(type === 'private'
+        ? {
+            $or: [
+              { sender: userId, to: conversationId },
+              { sender: conversationId, to: userId },
+            ],
+          }
+        : { group: conversationId }),
+    })
+      .sort({ createdAt: -1 })
+      // .limit(Number(limit));
+
+    return res.status(200).json({
+      code: 1,
+      message: 'success',
+      data: {
+        messages:messages.reverse()
+      }
+    }); // 按时间升序返回
+  } catch (err) {
+    console.error('加载消息失败:', err);
+    return res.status(500).json({ error: '服务器错误' });
   }
-
-  const messages = await Message.find(query)
-    .sort({ createdAt: -1 })
-    .limit(Number(limit));
-
-  res.json(messages.reverse()); // 时间顺序：早 → 晚
 }
