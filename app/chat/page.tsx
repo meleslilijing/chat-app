@@ -2,9 +2,9 @@
 import axios from "axios";
 import { useEffect, useState, useReducer, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Socket } from 'socket.io-client';
+import { Socket } from "socket.io-client";
 
-import {State} from '@/types'
+import { State } from "@/types";
 
 import SideBar from "components/SideBar";
 import ChatWindow from "@/app/components/ChatWindow/index";
@@ -21,8 +21,7 @@ import {
 import reducer, { initState } from "app/reducer";
 import { initSocket } from "@/lib/socket";
 
-import {User, Message} from '@/types'
-
+import { User, Message } from "@/types";
 
 import "./chat.module.css";
 
@@ -75,6 +74,7 @@ const sendMessage = (
       to: toUserId,
       content,
       createdAt: new Date().toISOString(),
+      readBy: [senderUserId],
     };
 
     resolve(message);
@@ -88,7 +88,7 @@ export default function ChatBox() {
   const [onlineSet, setOnlineSet] = useState<Set<string>>(new Set<string>([])); // 在线用户
 
   const [state, dispatch] = useReducer<State, any>(reducer, initState);
-  const socketRef = useRef<Socket | null>(null)
+  const socketRef = useRef<Socket | null>(null);
 
   // 当前登录用户，消息发送方
   const sendUser = useMemo(() => {
@@ -99,7 +99,7 @@ export default function ChatBox() {
       return null;
     }
   }, []);
-  
+
   // 当前聊天目标用户
   const toUser: User | null = useMemo(() => {
     if (!state.toUserId) {
@@ -107,23 +107,6 @@ export default function ChatBox() {
     }
 
     return users.find((user: User) => user.id === state.toUserId) || null;
-  }, [state.toUserId]);
-
-
-  useEffect(() => {
-    if (!state.toUserId) {
-      return;
-    }
-
-    loadMessages(state.toUserId, localStorage.getItem("token")).then(
-      (data) => {
-        console.log('loadMessages data: ', data)
-        dispatch({
-          type: "update_messages",
-          payload: data.messages,
-        });
-      }
-    );
   }, [state.toUserId]);
 
   const onlineUsersName = useMemo(() => {
@@ -139,7 +122,7 @@ export default function ChatBox() {
     const socket = socketRef.current;
 
     if (!socket) {
-      return
+      return;
     }
 
     socket.on("connect", () => {
@@ -147,26 +130,22 @@ export default function ChatBox() {
       console.log("Connected socket.id:", socket.id);
     });
 
-    socket.emit("message", ` 进入聊天室`);
-    socket.on("message", (msg: string) => {
-      console.log(msg);
-    });
-
-    socket.on("private_message", (message: string) => {
-      console.log("private_message message: ", message);
-      dispatch({
-        type: "send_message",
-        payload: message,
-      });
-    });
-
     socket.on("disconnect", () => {
       setConnected(false);
     });
 
-    socket.on("user_online", ({ userIds }: { userIds: string[] }) => {
-      setOnlineSet(() => new Set(userIds));
-    });
+    socket.on(
+      "user_online",
+      ({ userIds, unreadMessages }: { userIds: string[]; unreadMessages: Message[] }) => {
+        setOnlineSet(() => new Set(userIds));
+        console.log("user_online unreadMessages: ", unreadMessages);
+
+        dispatch({
+          type: 'set_unreadMessages',
+          payload: unreadMessages
+        })
+      }
+    );
 
     socket.on("user_offline", ({ userIds }: { userIds: string[] }) => {
       setOnlineSet(() => new Set(userIds));
@@ -177,12 +156,71 @@ export default function ChatBox() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!state.toUserId) {
+      return;
+    }
+
+    const socket = socketRef.current;
+    if (!socket) {
+      return;
+    }
+
+    // 更新 toUser的所有消息到 ChatWindow
+    loadMessages(state.toUserId, localStorage.getItem("token")).then((data) => {
+      console.log("loadMessages data: ", data);
+      dispatch({
+        type: "update_messages",
+        payload: data.messages,
+      });
+    });
+
+    // 接收私聊消息
+    socket.on("private_message", (message: Message) => {
+      console.log("private_message message: ", message);
+
+      // 更新本地 chatWindow消息
+      message.readBy.push(message.to); // 标记当前用户为已读
+      dispatch({
+        type: "send_message",
+        payload: message,
+      });
+      socket.emit("mark_read", { chatId: message.to });
+    });
+
+    socket.on("messages_read", ({ sender }: { sender: string }) => {
+      if (sender === sendUser?.id) {
+        const messages = state.messages.map((message: Message) => {
+          return message.readBy.includes(sender)
+            ? message
+            : { ...message, readBy: [...message.readBy, sender] };
+        });
+        dispatch({
+          type: "update_messages",
+          payload: messages,
+        });
+      }
+    });
+
+    // 标记已读
+    // console.log('标记已读 socketRef.current: ', socketRef.current);
+    socket.emit("mark_read", { chatId: state.toUserId });
+
+    return () => {
+      socket?.off("private_message");
+      socket?.off("messages_read");
+    };
+  }, [state.toUserId]);
+
   if (localStorage.getItem("token") === null || sendUser === null) {
     return <ErrorPage />;
   }
 
   return (
-    <div className="chat-page w-full flex flex-col gap-2" style={{height: 'calc(100% - 50px)'}}>
+    <div
+      className="chat-page w-full flex flex-col gap-2"
+      style={{ height: "calc(100% - 50px)" }}
+    >
       <div className="dev-pan border-1">
         <div>Connected: {connected.toString()}</div>
         <div>登录用户: {JSON.stringify(sendUser)}</div>
@@ -190,13 +228,22 @@ export default function ChatBox() {
         <div>在线用户: {onlineUsersName.join(",")}</div>
         <div>在线用户数: {onlineSet.size}</div>
       </div>
-      <ResizablePanelGroup direction="horizontal" className="rounded-lg border h-fit">
+      <ResizablePanelGroup
+        direction="horizontal"
+        className="rounded-lg border h-fit"
+      >
         <ResizablePanel defaultSize={30}>
           <SideBar
             dispatch={dispatch}
             users={users}
             onlineSet={onlineSet}
             sendUserId={sendUser.id}
+            unreadMessages={state.unreadMessages}
+            changeToUserId={(toUserId: string) => {
+              console.log("SideBar callback toUserId: ", toUserId);
+              dispatch({ type: "update_touser_id", payload: toUserId });
+              // socketRef.current?.emit("mark_read", { chatId: toUserId });
+            }}
           />
         </ResizablePanel>
         <ResizableHandle />
@@ -209,7 +256,7 @@ export default function ChatBox() {
                 messages={state.messages}
                 sendUser={sendUser}
                 toUser={toUser}
-                online={ onlineSet.has(toUser?.id || "") }
+                online={onlineSet.has(toUser?.id || "")}
               />
             </ResizablePanel>
             <ResizableHandle />
@@ -224,14 +271,14 @@ export default function ChatBox() {
                           toUserId: toUser?.id,
                           content: message.content,
                         });
-                        
+
                         // offline 用户接收的信息，前端先直接显示
-                        if (!onlineSet.has(toUser?.id || "")) {
-                          dispatch({
-                            type: "send_message",
-                            payload: message,
-                          });
-                        }
+                        // if (!onlineSet.has(toUser?.id || "")) {
+                        dispatch({
+                          type: "send_message",
+                          payload: message,
+                        });
+                        // }
                       } // endof if
                     }
                   )

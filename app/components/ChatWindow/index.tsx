@@ -1,29 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
-import type {User, Message} from '@/types'
+import type { User, Message } from "@/types";
 import UserAvatar from "../UserAvatar";
-
+import { ScrollArea } from "components/ui/scroll-area";
 
 const dateISOStringToLocaleString = (dateISOString: string) => {
   if (!dateISOString) {
-    return ''
+    return "";
   }
   const date = new Date(dateISOString);
   const year = date.getFullYear();
-  const month = date.getMonth()+1;
+  const month = date.getMonth() + 1;
   const dt = date.getDate();
 
   let dStr = dt.toString();
   let monthStr = month.toString();
 
   if (dt < 10) {
-    dStr = '0' + dStr;
+    dStr = "0" + dStr;
   }
   if (month < 10) {
-    monthStr = '0' + month;
+    monthStr = "0" + month;
   }
-  return `${year}-${monthStr}-${dStr} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
-}
+  return `${year}-${monthStr}-${dStr} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+};
 
 export default function ChatWindow({
   users,
@@ -31,13 +31,12 @@ export default function ChatWindow({
   sendUser,
   toUser,
   online,
-  
 }: {
   users: User[];
   messages: Message[];
   sendUser: User | null;
   toUser: User | null;
-  online: boolean
+  online: boolean;
 }) {
   const userMap = useMemo(() => {
     const map: { [key: string]: User } = {};
@@ -45,39 +44,105 @@ export default function ChatWindow({
       map[user.id] = user;
     });
     return map;
-  }, [users])
+  }, [users]);
+
+
+  const itemsRef = useRef<any>(null);
+  const getMap = () => {
+    if (!itemsRef.current) {
+      // 首次运行时初始化 Map。
+      itemsRef.current = new Map<Message, any>();
+    }
+    return itemsRef.current;
+  }
+  const scrollToMessage = (message: Message) => {
+    const map = getMap();
+    const node = map.get(message);
+    
+    console.log('scrollToMessage message: ', message)
+
+    node?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }
+
+  useEffect(() => {
+    const len = messages.length
+    scrollToMessage(messages[len - 1])
+  }, [messages])
+
 
   return (
-    <div className="flex flex-col">
-      <div className="items-center border-b p-2 flex justify-between">
-        <p>{ toUser ? toUser.username[0].toUpperCase() + toUser.username.slice(1) : 'UNKNOWN'} { online ? '' : '(Offline)'}</p>
-        <p>Sender: {sendUser ? sendUser.username[0].toUpperCase() + sendUser.username.slice(1) : 'UNKNOWN'}</p>
+    <div className="chat-window flex flex-col" style={{height: '100%'}}>
+      <div className="items-center border-b p-2 flex justify-between" style={{
+        height: '50px'
+      }}>
+        <p>
+          {toUser
+            ? toUser.username[0].toUpperCase() + toUser.username.slice(1)
+            : "UNKNOWN"}{" "}
+          {online ? "" : "(Offline)"}
+        </p>
+        <p>
+          Sender:{" "}
+          {sendUser
+            ? sendUser.username[0].toUpperCase() + sendUser.username.slice(1)
+            : "UNKNOWN"}
+        </p>
       </div>
-      <div className="chat-records p-2">
-        {messages.map((message: Message) => {
-          const senderName = userMap[message.sender].username
-          const createDateStr = dateISOStringToLocaleString(message.createdAt)
+      <ScrollArea className="chat-records p-2" style={{height: 'calc(100% - 50px)'}}>
+        {messages.map((message: Message, index: number) => {
+          const senderName = userMap[message.sender].username;
+          const createDateStr = dateISOStringToLocaleString(message.createdAt);
 
-          const isSender = message.sender === sendUser?.id
+          const isSender = message.sender === sendUser?.id;
 
           return (
-            <div className={`record flex ${ isSender ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div
+              key={message.createdAt + index}
+              ref={
+                (node) => {
+                  const map = getMap()
+                  map.set(message, node)
+
+                  return () => {
+                    map.delete(message)
+                  }
+                }
+              }
+              className={`record flex ${
+                isSender ? "flex-row-reverse" : "flex-row"
+              }`}
+            >
               <div className="record-avatar flex flex-start">
                 <UserAvatar name={senderName} />
               </div>
               <div className="record-content p-2 max-w-1/2">
-                <div className="flex justify-start text-xs gap-2">
+                <div className="flex justify-start text-sm gap-2">
                   <p>{senderName}</p>
                   <p className="">{createDateStr}</p>
+                  {isSender && (
+                    <span className="text-sm">
+                      {message.readBy.includes(message.to)
+                        ? "✓✓ 已读"
+                        : "✓ 发送"}
+                    </span>
+                  )}
                 </div>
-                <div className={`content p-2 rounded-sm ${isSender ? 'bg-green-200 text-black' : 'bg-gray-700'}`}>
+                <div
+                  className={`content p-2 rounded-sm ${
+                    isSender ? "bg-green-200 text-black" : "bg-gray-700"
+                  }`}
+                >
                   {message.content}
                 </div>
               </div>
             </div>
           );
         })}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

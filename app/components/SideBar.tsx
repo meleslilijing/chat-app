@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import {User} from '@/types'
+import {User, Message} from '@/types'
 
 // import { Avatar, AvatarFallback, AvatarImage } from "components/ui/avatar";
 import { Separator } from "components/ui/separator";
@@ -14,11 +14,15 @@ export default function SideBar({
   users,
   onlineSet,
   sendUserId,
+  unreadMessages,
+  changeToUserId
 }: {
   users: User[];
   dispatch: any;
   onlineSet: Set<string>;
   sendUserId: string;
+  unreadMessages: Message[]
+  changeToUserId: (chatId: string) => void
 }) {
   const [searhText, setSearchText] = useState("");
 
@@ -50,11 +54,6 @@ export default function SideBar({
     setSearchText((e.target as HTMLInputElement).value);
   };
 
-  const changeToUserId = (id: string) => {
-    // console.log(id)
-    dispatch({ type: "update_touser_id", payload: id });
-  };
-
   return (
     <div className="side-bar h-full">
       <h4 className="flex justify-center border-b-2 p-1">
@@ -77,6 +76,7 @@ export default function SideBar({
                     <span>
                       {username[0].toUpperCase() + username.slice(1)} {onlineSet.has(id) ? "" : "(offline)"}
                     </span>
+                    count: {  unreadMessages.filter((message: Message) => message.sender === id).length}
                   </div>
                   <Separator className="my-2" />
                 </div>

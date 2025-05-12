@@ -1,6 +1,7 @@
 export type State = {
   toUserId: string
   messages: Message[]
+  unreadMessages: Message[]
 }
 
 export interface Action {
@@ -21,5 +22,6 @@ export interface Message {
   sender: string
   to: string
   content: string
+  readBy: string[]
   createdAt: string;
 }

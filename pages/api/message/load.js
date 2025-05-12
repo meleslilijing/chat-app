@@ -33,23 +33,18 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: '无效的 token' });
   }
 
-  if (!type || !conversationId || (type !== 'private' && type !== 'group')) {
+  if (!type || !conversationId || type !== 'private') {
     return res.status(400).json({ error: '请求参数错误' });
   }
 
   try {
     const messages = await Message.find({
-      type,
-      ...(type === 'private'
-        ? {
-            $or: [
-              { sender: userId, to: conversationId },
-              { sender: conversationId, to: userId },
-            ],
-          }
-        : { group: conversationId }),
-    })
-      .sort({ createdAt: -1 })
+      type: 'private',
+      $or: [
+        { sender: userId, to: conversationId },
+        { sender: conversationId, to: userId },
+      ]
+    }).sort({ createdAt: -1 })
       // .limit(Number(limit));
 
     return res.status(200).json({
