@@ -2,14 +2,13 @@
 import { useEffect, useState } from "react";
 
 import { Toaster, toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 
 import axios from "axios";
 
-import ThemeToggle from '@/components/theme-toggle'
-import Register from "@/components/Register";
-import Login from "@/components/Login";
+import Register from "components/Register";
+import Login from "components/Login";
 
 
 import "@/app/globals.css";
@@ -48,7 +47,6 @@ export default function Index() {
         Seed User
       </Button>
       <Button onClick={() => queryAllUsers()}>query all users</Button>
-      <ThemeToggle />
       <Tabs
         defaultValue="login"
         className="w-[400px] absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%]"

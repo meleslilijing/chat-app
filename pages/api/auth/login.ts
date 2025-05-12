@@ -1,8 +1,8 @@
 // pages/api/auth/login.ts
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import dbConnect from "../../../../lib/dbConnect";
-import User from "../../../../models/User";
+import dbConnect from "../../../lib/dbConnect";
+import User from "../../../models/User";
 //@ts-ignore
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";

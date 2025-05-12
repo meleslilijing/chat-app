@@ -1,0 +1,9 @@
+/* .chat {
+  display: flex;
+  flex-direction: column;
+} */
+
+.user-item {
+  display: flex;
+  gap: 3px;
+}

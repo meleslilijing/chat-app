@@ -4,9 +4,9 @@ import type { NextApiRequest } from "next";
 import type { NextApiResponse } from "next";
 
 import jwt from "jsonwebtoken";
-import Message from "../../../../models/Message";
+import Message from "../../../models/Message";
 
-import dbConnect from "../../../../lib/dbConnect";
+import dbConnect from "../../../lib/dbConnect";
 
 // 在线用户
 const onlineUsers = new Map(); // userId => socket.id

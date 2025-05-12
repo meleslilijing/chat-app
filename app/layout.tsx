@@ -1,4 +1,5 @@
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "components/ThemeProvider"
+import Header from "./components/Header";
 import "./globals.css";
 
 export default function RootLayout({
@@ -9,7 +10,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        style={{ background: 'red' }}
+        style={{ height: "100vh" }}
+        className="p-10"
       >
         <ThemeProvider
             attribute="class"
@@ -17,7 +19,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <div className="test-haha"></div>
+            <Header />
             {children}
           </ThemeProvider>
       </body>

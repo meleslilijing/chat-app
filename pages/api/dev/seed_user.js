@@ -31,11 +31,11 @@ export default async function handler(req, res) {
 
   await User.insertMany(users);
 
-  console.log(`✅ 成功插入 ${users.length} 个用户`);
+  console.log(`清空User表，成功插入 ${users.length} 个用户`);
 
   res.status(201).json({ 
     code: 1,
-    message: `✅ 成功插入 ${users.length} 个用户`, 
+    message: `清空User表，成功插入 ${users.length} 个用户`, 
   });
 }
 
