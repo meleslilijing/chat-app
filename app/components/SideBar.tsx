@@ -14,15 +14,17 @@ export default function SideBar({
   users,
   onlineSet,
   sendUserId,
+  toUserId,
+  socket,
   unreadMessages,
-  changeToUserId
 }: {
   users: User[];
   dispatch: any;
   onlineSet: Set<string>;
   sendUserId: string;
-  unreadMessages: Message[]
-  changeToUserId: (chatId: string) => void
+  toUserId: string;
+  unreadMessages: Message[];
+  socket: any;
 }) {
   const [searhText, setSearchText] = useState("");
 
@@ -64,21 +66,44 @@ export default function SideBar({
           <div className="user-list p-4">
             {showUsers.map((user) => {
               const { id, username } = user;
+              const unreadCount = unreadMessages.filter(
+                (message: Message) => 
+                  message.sender === id && 
+                  !message.readBy.includes(sendUserId)
+              ).length;
 
               return (
                 <div
                   key={id}
-                  className="user-item flex cursor-pointer flex-col"
-                  onClick={() => changeToUserId(id)}
+                  className={`user-item flex cursor-pointer flex-col hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-md relative ${id === toUserId ? "bg-gray-100 dark:bg-gray-800" : ""}`}
+                  onClick={() => {
+                    console.log("click user: ", id);
+                    dispatch({
+                      type: 'update_touser_id',
+                      payload: id
+                    });
+                    dispatch({
+                      type: 'clear_unread_messages',
+                      payload: id
+                    });
+
+                    // 清除服务器上的未读消息
+                    socket?.emit("mark_read", { chatId: id });
+                  }}
                 >
-                  <div className="flex flex-row gap-2">
-                    <UserAvatar name={username} />
-                    <span>
-                      {username[0].toUpperCase() + username.slice(1)} {onlineSet.has(id) ? "" : "(offline)"}
-                    </span>
-                    count: {  unreadMessages.filter((message: Message) => message.sender === id).length}
+                  <div className="flex flex-row gap-2 items-center justify-between">
+                    <div className="flex flex-row gap-2 items-center">
+                      <UserAvatar name={username} />
+                      <span>
+                        {username[0].toUpperCase() + username.slice(1)} {onlineSet.has(id) ? "" : "(offline)"}
+                      </span>
+                    </div>
+                    {unreadCount > 0 && id !== toUserId && (
+                      <div className="bg-red-500 text-white rounded-full px-2 py-1 text-xs font-bold min-w-[20px] text-center">
+                        {unreadCount}
+                      </div>
+                    )}
                   </div>
-                  <Separator className="my-2" />
                 </div>
               );
             })}

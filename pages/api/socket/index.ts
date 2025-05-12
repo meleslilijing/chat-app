@@ -78,29 +78,54 @@ export default async function handler(req, res) {
       if (toSocketId) {
         console.log("private_message created: ", message);
         io.to(toSocketId)?.emit("private_message", message);
+
+        // 获取接收者的所有未读消息
+        const unreadMessages = await Message.find({
+          to: toUserId,
+          readBy: {
+            $not: { $elemMatch: { $eq: toUserId } },
+          },
+        }).sort({ createdAt: -1 }).lean();
+
+        // 发送未读消息更新
+        io.to(toSocketId)?.emit("update_unread_messages", {
+          unreadMessages: unreadMessages,
+        });
       }
     });
 
     // 标记已读
     socket.on("mark_read", async ({ chatId }) => {
-      console.log("mark_read: ", { chatId });
-      const filter = {
-        type: "private",
-        $or: [
-          { sender: chatId, to: userId },
-          { sender: userId, to: chatId },
-        ],
-      };
+      console.log("mark_read: ", { chatId, userId });
+      try {
+        // 更新数据库中的消息已读状态
+        const filter = {
+          type: 'private',
+          sender: chatId,  // 消息发送者
+          to: userId,      // 当前用户（接收者）
+          readBy: { $ne: userId }  // 还未被当前用户标记为已读
+        };
 
-      await Message.updateMany(
-        { ...filter, readBy: { $ne: userId } },
-        { $addToSet: { readBy: userId } }
-      );
+        const updateResult = await Message.updateMany(
+          filter,
+          { $addToSet: { readBy: userId } }  // 将当前用户添加到 readBy 数组
+        );
 
-      // 通过socket，给在线的用户更新消息
-      const toSocketId = onlineUsers.get(chatId);
-      if (toSocketId) {
-        io.to(toSocketId).emit("messages_read", { sender: userId });
+        console.log('Messages marked as read:', updateResult.modifiedCount);
+
+        if (updateResult.modifiedCount > 0) {
+          // 通知消息发送者
+          const senderSocketId = onlineUsers.get(chatId);
+          if (senderSocketId) {
+            io.to(senderSocketId).emit("messages_read", {
+              sender: userId,    // 已读消息的用户
+              chatId: chatId    // 消息发送者
+            });
+          }
+        }
+
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
       }
     });
 

@@ -59,8 +59,6 @@ export default function ChatWindow({
     const map = getMap();
     const node = map.get(message);
     
-    console.log('scrollToMessage message: ', message)
-
     node?.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
@@ -94,27 +92,22 @@ export default function ChatWindow({
       </div>
       <ScrollArea className="chat-records p-2" style={{height: 'calc(100% - 50px)'}}>
         {messages.map((message: Message, index: number) => {
-          const senderName = userMap[message.sender].username;
+          const senderName = userMap[message.sender]?.username || 'Unknown';
           const createDateStr = dateISOStringToLocaleString(message.createdAt);
-
           const isSender = message.sender === sendUser?.id;
 
           return (
             <div
-              key={message.createdAt + index}
-              ref={
-                (node) => {
-                  const map = getMap()
-                  map.set(message, node)
-
-                  return () => {
-                    map.delete(message)
-                  }
+              key={`${message.createdAt}-${index}`}
+              ref={(node) => {
+                const map = getMap();
+                if (node) {
+                  map.set(message, node);
+                } else {
+                  map.delete(message);
                 }
-              }
-              className={`record flex ${
-                isSender ? "flex-row-reverse" : "flex-row"
-              }`}
+              }}
+              className={`record flex ${isSender ? "flex-row-reverse" : "flex-row"}`}
             >
               <div className="record-avatar flex flex-start">
                 <UserAvatar name={senderName} />
@@ -127,7 +120,9 @@ export default function ChatWindow({
                     <span className="text-sm">
                       {message.readBy.includes(message.to)
                         ? "✓✓ 已读"
-                        : "✓ 发送"}
+                        : message.readBy.includes(message.sender)
+                          ? "✓ 已发送"
+                          : "发送中"}
                     </span>
                   )}
                 </div>

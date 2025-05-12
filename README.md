@@ -3,6 +3,7 @@
 - git clone https://github.com/meleslilijing/chat-app.git
 - 进入项目根目录
 - 运行命令 `docker-compose up --build`
+- 浏览器访问 localhost:3000/
 
 TODO: 
 - 登录token存放到header中
